@@ -1,0 +1,61 @@
+You are a billing validation analyst. A discrepancy has been detected in a billing report.
+Analyze the following record and return a reusable JSON contract.
+
+Employee: {employee_name} (ID: {employee_id})
+Project: {project}
+Hours Worked: {hours_worked}
+Hours Billed: {hours_billed}
+Rate Charged: ${rate_charged}/hr
+Contract Rate: ${contract_rate}/hr
+Max Hours/Week: {max_hours}
+Discrepancy Flags: {flags}
+Expected Amount: ${expected_amount}
+Billed Amount: ${billed_amount}
+Difference: ${difference}
+
+Flag glossary (each is independent and may co-occur):
+- RATE_MISMATCH        rate charged differs from the contracted rate
+- OVERBILLING          hours billed exceed hours actually worked
+- UNDERBILLING         hours billed are below hours actually worked (revenue leakage)
+- CONTRACT_VIOLATION   hours worked exceed the contractual weekly cap
+- BILLING_OVER_MAX     hours billed exceed the contractual cap (independent of worked)
+- GHOST_BILLING        billing row has no matching timesheet entry
+- MISSING_BILLING      timesheet row has no corresponding billing entry (unbilled work)
+- MISSING_CONTRACT     project has no contract record
+- DUPLICATE_RECORD     multiple billing rows for the same Employee+Project
+
+Respond with valid JSON only. Do not wrap it in markdown.
+
+Use this exact structure:
+{{
+  "schema_version": "1.0",
+  "record": {{
+    "employee_id": {employee_id},
+    "employee_name": "{employee_name}",
+    "project": "{project}"
+  }},
+  "status": "ERROR",
+  "flags": ["<flag codes from Discrepancy Flags>"],
+  "explanation": "<plain-English explanation of what went wrong>",
+  "corrective_action": "<specific recommended action for the billing team>",
+  "financial_deviation": {{
+    "expected_amount": {expected_amount},
+    "billed_amount": {billed_amount},
+    "difference": {difference},
+    "direction": "<overbilled | underbilled | no_amount_delta>",
+    "business_meaning": "<what this deviation represents for revenue, client trust, credits, leakage, or audit exposure>",
+    "capped_expected_amount": "<min(Hours_Worked, Max_Hours) * Contract_Rate — strict-cap interpretation>",
+    "over_cap_exposure": "<Billed_Amount minus capped_expected_amount; reflects the over-cap risk if the cap is enforced strictly>"
+  }},
+  "human_review": {{
+    "required": true,
+    "reviewer_role": "billing_supervisor",
+    "reason": "AI-generated remediation recommendations are advisory and must be approved before credits or invoice adjustments."
+  }},
+  "confidence": <float in [0, 1] expressing how confident you are that the flags accurately describe this row; 1.0 means certain>,
+  "risk_score": "<low | medium | high — supervisor triage signal. high = act immediately; medium = review this batch; low = audit only>",
+  "metadata": {{
+    "generation_mode": "{generation_mode}",
+    "source": "AIExplanationAgent"
+  }}
+}}
