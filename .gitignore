@@ -1,0 +1,30 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Output (generated at runtime)
+output/validation_report.csv
+output/audit.log
+output/e2e_quickstart_report.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+PROYECTO_TELEPERFORMANCE/
+PROYECTO TELEPERFORMANCE/
+
+# Test cache
+.pytest_cache/
+.coverage
