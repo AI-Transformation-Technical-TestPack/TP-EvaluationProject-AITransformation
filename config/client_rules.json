@@ -1,0 +1,12 @@
+{
+  "teleperformance": {
+    "allow_rate_tolerance": 0,
+    "max_hours_enforcement": true,
+    "overbilling_threshold": 0
+  },
+  "client_b": {
+    "allow_rate_tolerance": 2,
+    "max_hours_enforcement": false,
+    "overbilling_threshold": 1
+  }
+}
