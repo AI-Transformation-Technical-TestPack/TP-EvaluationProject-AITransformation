@@ -1,0 +1,22 @@
+{
+  "roles": {
+    "analyst": {
+      "description": "Can run validation pipeline and view reports",
+      "permissions": ["run_validation", "read_report", "read_audit_log"]
+    },
+    "admin": {
+      "description": "Can configure client rules and manage governance controls",
+      "permissions": ["run_validation", "read_report", "read_audit_log", "edit_client_rules", "toggle_kill_switch"]
+    },
+    "viewer": {
+      "description": "Read-only access to generated reports",
+      "permissions": ["read_report"]
+    }
+  },
+  "agent_permissions": {
+    "DataIngestionAgent": ["read:data/input"],
+    "ValidationAgent": ["read:config/client_rules.json"],
+    "AIExplanationAgent": ["read:prompts/discrepancy_prompt.txt", "call:anthropic_api"],
+    "ReportAgent": ["write:output/validation_report.csv", "write:output/audit.log"]
+  }
+}
