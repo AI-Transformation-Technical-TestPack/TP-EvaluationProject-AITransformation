@@ -101,4 +101,4 @@ maintained.
 - Architecture, validation logic, and governance decisions are documented under `docs/`.
 - Prompt instructions are version-controlled under `prompts/`.
 - Validation behavior is protected by tests under `tests/`.
-- Generated reports and logs are written under `output/`.
+- Generated reports and logs are written under `data/output/`.

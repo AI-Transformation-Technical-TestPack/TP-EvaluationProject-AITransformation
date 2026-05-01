@@ -12,32 +12,79 @@ and approve them before credits, invoice adjustments, or client-facing correctio
 
 ## Quick Start
 
+### 1. Clone the repo
+
 ```bash
-# 1. Clone and enter the repo using your favorite terminal
 git clone https://github.com/AI-Transformation-Technical-TestPack/TP-EvaluationProject-AITransformation.git
 cd TP-EvaluationProject-AITransformation
-
-# 2. Create a local virtual environment and install dependencies
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-
-# 3. Set your API key (optional)
-cp .env.example .env
-# edit AI_PROVIDER and the matching API key for Anthropic, OpenAI, or a compatible endpoint
-
-# 4. Run validation
-python main.py --mode orchestrated --input data/input/billing.csv --verbose
 ```
 
-On Windows, use `python` instead of `python3` and activate the environment with
-`.venv\Scripts\activate`.
+### 2. Create a virtual environment
 
-Or launch the web UI:
+```bash
+python3 -m venv .venv
+```
+
+### 3. Activate the environment
+
+```bash
+source .venv/bin/activate
+```
+
+On Windows: `.venv\Scripts\activate`.
+
+### 4. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Create the local config
+
+```bash
+cp .env.example .env
+```
+
+### 6. Configure the API key
+
+Open `.env` and set `ANTHROPIC_API_KEY=sk-ant-...`. Obtain a key at <https://console.anthropic.com/>.
+
+```bash
+code .env
+```
+
+For OpenAI, OpenAI-compatible providers, or the no-key deterministic path, see [`docs/usage.md`](docs/usage.md).
+
+### 7. Run the pipeline
+
+Three interfaces. All write the same artifacts to `data/output/`.
+
+**Web UI** (Streamlit)
 
 ```bash
 streamlit run app.py
 ```
+
+**Command line**
+
+```bash
+python main.py --verbose
+```
+
+**Interactive menu**
+
+```bash
+python main.py --interactive
+```
+
+#### Output artifacts
+
+- `data/output/validation_report.csv` — flagged report. The `AI_Explanation` column contains the schema-versioned JSON contract for each ERROR row.
+- `data/output/audit.log` — per-agent ISO-timestamped trail (START / DONE / INFO / ERROR / HALT / COMPLETE).
+
+Sample data: 5 records → 1 OK, 4 ERROR.
+
+For alternative providers, deterministic fallback, governance toggles, per-flag tests, and the reviewer self-guided tour, see [`docs/usage.md`](docs/usage.md).
 
 ---
 
@@ -46,11 +93,10 @@ streamlit run app.py
 The system reads billing source files, validates their structure, compares expected charges
 against proposed invoice values, and marks rows that require review. For each error row, it
 generates a structured JSON explanation using the configured AI provider.
-The final report is written to `output/validation_report.csv`, while the orchestrator records
-pipeline activity in `output/audit.log`.
+The final report is written to `data/output/validation_report.csv`, while the orchestrator records
+pipeline activity in `data/output/audit.log`.
 
 The sample quick start run should process 5 records: 1 `OK` row and 4 `ERROR` rows.
-It should create `output/validation_report.csv` and `output/audit.log`.
 
 | Capability | How It Works |
 |---|---|
@@ -74,50 +120,7 @@ flowchart TD
     ORCH --> GOV[Governance: kill switch + audit log]
 ```
 
-The README is focused on understanding and running the project. For more detailed
-design rationale, validation logic, governance controls, and ADRs, refer to `docs/`.
-
----
-
-## CLI Reference
-
-```bash
-# Full orchestrated run
-python main.py --mode orchestrated --input data/input/billing.csv --verbose
-
-# Choose an AI provider
-python main.py --ai-provider openai --input data/input/billing.csv
-
-# Run without AI provider calls
-python main.py --no-ai --input data/input/billing.csv
-
-# Select a different client rule set
-python main.py --client client_b --input data/input/billing.csv
-
-# Launch guided terminal menu
-python main.py --interactive
-```
-
-### API-key confirmation flow
-
-If you run the CLI without setting `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY` when `--ai-provider openai` is selected) and **without** passing `--no-ai`, the CLI will refuse to silently downgrade. Instead, it warns that the run will use the deterministic / programmatic fallback and asks for explicit confirmation:
-
-```
-⚠  No API key found for provider: anthropic
-   Expected env var: ANTHROPIC_API_KEY
-   …
-Continue in deterministic mode? [y/N]:
-```
-
-Three ways to bypass the prompt:
-
-| Situation | Use |
-|-----------|-----|
-| You intentionally want the deterministic mode | `--no-ai` |
-| You're in CI / non-interactive context | `--yes` (or simply pipe stdin — non-TTY is auto-accepted with a stderr notice) |
-| You want AI mode | Set `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`) and re-run |
-
-The intent is governance-first: the deterministic fallback is fully supported, but it must be a **conscious choice**, not an accidental degradation.
+For detailed design rationale, validation formulas, governance controls, and ADRs, see `docs/`.
 
 ---
 
@@ -126,17 +129,18 @@ The intent is governance-first: the deterministic fallback is fully supported, b
 ```
 EvaluationProject/
 ├── agents/              # Worker agents: ingestion, validation, AI explanation, report
-├── config/              # Client-specific validation rules
-├── data/input/          # Sample timesheet, contracts, and billing CSV files
-├── docs/                # Architecture, validation, governance, requirements, ADRs
-├── governance/          # Kill switch and RBAC configuration
+├── config/              # Client rules, kill switch, RBAC role model
+├── data/
+│   ├── input/           # Sample timesheet, contracts, and billing CSV files
+│   └── output/          # Generated report and audit log (gitignored)
+├── docs/                # Usage, architecture, validation, governance, requirements, ADRs, candidate-reasoning narrative
 ├── orchestrator/        # Central workflow coordinator
-├── output/              # Generated report and audit log
 ├── prompts/             # Version-controlled AI prompt template
-├── tests/               # Pytest validation coverage
+├── tests/               # Pytest test suite (unit, CLI, end-to-end)
 ├── app.py               # Streamlit web UI
 ├── main.py              # CLI entry point
-└── requirements.txt
+├── requirements.txt
+└── .env.example         # Template for your local .env
 ```
 
 ---
@@ -145,21 +149,12 @@ EvaluationProject/
 
 | Need | Start Here |
 |---|---|
+| Run alternative commands, governance toggles, or the reviewer self-guided tour | [`docs/usage.md`](docs/usage.md) |
 | Understand the workflow and diagrams | [`docs/architecture.md`](docs/architecture.md) |
 | Review billing rules and calculations | [`docs/validation-logic.md`](docs/validation-logic.md) |
 | Review audit, safety, and Human-in-the-Loop controls | [`docs/governance.md`](docs/governance.md) |
 | Review functional requirements | [`docs/requirements.md`](docs/requirements.md) |
 | Review design decisions | [`docs/decisions/`](docs/decisions/) |
-
----
-
-## Running Tests
-
-```bash
-python3 -m pytest tests/ -v
-```
-
-Expected result: `27 passed`.
 
 ---
 

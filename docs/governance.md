@@ -22,12 +22,12 @@ This control keeps decisions:
 
 | Control | Implementation |
 |---|---|
-| Kill switch | `governance/kill_switch.json` is checked by the orchestrator before each step |
-| Audit log | `output/audit.log` records timestamp, agent, event, and detail |
-| Role model | `governance/rbac.json` documents analyst, admin, and viewer permissions |
-| Agent permissions | `governance/rbac.json` documents which resources each agent can access |
+| Kill switch | `config/kill_switch.json` is checked by the orchestrator before each step |
+| Audit log | `data/output/audit.log` records timestamp, agent, event, and detail |
+| Role model | `config/rbac.json` documents analyst, admin, and viewer permissions |
+| Agent permissions | `config/rbac.json` documents which resources each agent can access |
 | Secret management | `.env` stores `AI_PROVIDER` and the selected provider key; `.env.example` documents Anthropic, OpenAI, and compatible endpoint variables |
-| Output boundary | Generated reports and logs are written under `output/` |
+| Output boundary | Generated reports and logs are written under `data/output/` |
 
 ## Autonomous Workflow Governance Technique
 

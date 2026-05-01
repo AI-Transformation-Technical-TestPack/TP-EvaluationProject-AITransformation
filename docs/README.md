@@ -7,6 +7,7 @@ The root `README.md` is intentionally focused on understanding and running the p
 
 | Document | Purpose |
 |---|---|
+| [`usage.md`](usage.md) | Read this when you want CLI flags, alternative run modes, governance toggles, the per-feature reviewer self-guided tour, and test-suite invocations. |
 | [`architecture.md`](architecture.md) | Read this when you want to understand how the agents work together and why each repository area exists. |
 | [`validation-logic.md`](validation-logic.md) | Read this when you want to understand how billing values are calculated and how each exception flag is assigned. |
 | [`governance.md`](governance.md) | Read this when you want to understand how audit logging, supervisor review, permissions, and the kill switch keep automation controlled. |

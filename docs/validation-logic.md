@@ -82,7 +82,7 @@ Validation behavior is configured in `config/client_rules.json`:
 
 ```json
 {
-  "teleperformance": {
+  "client_a": {
     "allow_rate_tolerance": 0,
     "max_hours_enforcement": true,
     "overbilling_threshold": 0,

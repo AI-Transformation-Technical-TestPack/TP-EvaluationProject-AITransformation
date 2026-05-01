@@ -22,7 +22,7 @@ No LLM calls in the menu itself — options are numbered, selection triggers the
 
 **Tertiary — Streamlit web UI (`app.py`):**
 Visual interface with file uploaders, color-coded results table, and AI explanation panel.
-Uses TP brand colors (primary red `#E61E2A`).
+Uses a neutral, professional design system (slate-900 brand surface, blue accent for CTAs, status colors for OK / ERROR / risk levels).
 
 ## Consequences
 - ✅ CLI is deterministic and reliable for repeatable validation runs

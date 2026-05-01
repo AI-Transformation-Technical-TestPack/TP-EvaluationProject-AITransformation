@@ -17,7 +17,7 @@ Commit sequence:
 4. `test: add pytest unit tests covering all 5 validation scenarios`
 5. `feat: integrate configurable AI explanations with graceful fallback`
 6. `feat: add Orchestrator with kill-switch, audit logging, and CLI flags`
-7. `feat: add Streamlit web interface with TP brand colors`
+7. `feat: add Streamlit web interface`
 8. `feat: implement multi-client config system`
 9. `docs: complete README covering setup, governance, and stakeholder review paths`
 

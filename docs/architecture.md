@@ -52,8 +52,8 @@ flowchart TD
     ING --> VAL[ValidationAgent]
     VAL --> AI[AIExplanationAgent]
     AI --> REP[ReportAgent]
-    REP --> OUT[output/validation_report.csv]
-    ORCH --> AUDIT[output/audit.log]
+    REP --> OUT[data/output/validation_report.csv]
+    ORCH --> AUDIT[data/output/audit.log]
 ```
 
 | Step | Agent | Responsibility |
@@ -86,7 +86,7 @@ flowchart TD
 
 ## Output Report Shape (CSV)
 
-The workflow produces a single reviewable dataset: `output/validation_report.csv`. Each row
+The workflow produces a single reviewable dataset: `data/output/validation_report.csv`. Each row
 corresponds to an employee and project record, and the report includes both the validation
 result and the supporting context needed for review.
 
@@ -198,8 +198,8 @@ The system treats AI-generated remediation as advisory. The explanation contract
 adjustments, or client-facing corrections are issued.
 
 Operational controls are enforced around the agent workflow. The orchestrator checks the kill
-switch before each step, writes audit events to `output/audit.log`, and keeps generated reports
-under `output/` so review artifacts are easy to find.
+switch before each step, writes audit events to `data/output/audit.log`, and keeps generated reports
+under `data/output/` so review artifacts are easy to find.
 
 ## Repository Structure
 
@@ -217,7 +217,7 @@ part of the project.
 | Worker agents | `agents/` | Each agent owns one step of the workflow: ingestion, validation, explanation, or reporting. | Open this folder when changing the behavior of a specific pipeline step. |
 | Workflow coordination | `orchestrator/` | The orchestrator runs the agents in order, checks the kill switch, writes audit events, and handles execution errors. | Open this folder when changing workflow order or governance around agent execution. |
 | Client rules | `config/client_rules.json` | Client-specific validation policy is stored as configuration so tolerances and limits can change without editing source code. | Open this file when adding a client or adjusting validation thresholds. |
-| Governance controls | `governance/` | Operational controls are documented as project artifacts so permissions and stop conditions are easy to review. | Open this folder when reviewing role access, agent permissions, or kill-switch behavior. |
+| Governance controls | `config/` | Operational controls are documented as project artifacts so permissions and stop conditions are easy to review. | Open this folder when reviewing role access, agent permissions, or kill-switch behavior. |
 | AI prompt contract | `prompts/` | AI instructions are version-controlled outside source code so the explanation behavior can be reviewed and changed deliberately. | Open this folder when updating the explanation prompt or JSON contract instructions. |
 | Regression tests | `tests/` | Tests protect validation formulas and contract behavior when the implementation changes. | Open this folder when verifying behavior after code, rule, or prompt changes. |
 
@@ -228,7 +228,7 @@ Pass `--client <name>` to select a rule set. No code changes are required to add
 
 ```json
 {
-  "teleperformance": {
+  "client_a": {
     "allow_rate_tolerance": 0,
     "max_hours_enforcement": true,
     "overbilling_threshold": 0
