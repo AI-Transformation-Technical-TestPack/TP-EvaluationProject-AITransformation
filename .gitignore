@@ -11,9 +11,9 @@ dist/
 build/
 
 # Output (generated at runtime)
-output/validation_report.csv
-output/audit.log
-output/e2e_quickstart_report.json
+data/output/validation_report.csv
+data/output/audit.log
+data/output/e2e_quickstart_report.json
 
 # OS
 .DS_Store

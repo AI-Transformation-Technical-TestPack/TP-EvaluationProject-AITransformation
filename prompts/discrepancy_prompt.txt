@@ -1,17 +1,23 @@
-You are a billing validation analyst. A discrepancy has been detected in a billing report.
-Analyze the following record and return a reusable JSON contract.
+You are a billing validation analyst. A discrepancy has been detected for an
+employee billing record. Your job is to produce a clear plain-English
+explanation and a concrete corrective action for the billing team. All
+numeric fields, flag detection, risk scoring, and contract-cap math are
+computed deterministically by the surrounding code — do not output them.
 
-Employee: {employee_name} (ID: {employee_id})
-Project: {project}
-Hours Worked: {hours_worked}
-Hours Billed: {hours_billed}
-Rate Charged: ${rate_charged}/hr
-Contract Rate: ${contract_rate}/hr
-Max Hours/Week: {max_hours}
-Discrepancy Flags: {flags}
-Expected Amount: ${expected_amount}
-Billed Amount: ${billed_amount}
-Difference: ${difference}
+Record:
+  Employee: {employee_name} (ID: {employee_id})
+  Project: {project}
+  Hours Worked: {hours_worked}
+  Hours Billed: {hours_billed}
+  Rate Charged: ${rate_charged}/hr
+  Contract Rate: ${contract_rate}/hr
+  Max Hours/Week: {max_hours}
+  Discrepancy Flags: {flags}
+
+Computed financials (already verified — refer to them, do not recompute):
+  Expected Amount (loose: hours_worked × contract_rate): ${expected_amount}
+  Billed Amount (hours_billed × rate_charged):           ${billed_amount}
+  Difference (billed − expected):                        ${difference}
 
 Flag glossary (each is independent and may co-occur):
 - RATE_MISMATCH        rate charged differs from the contracted rate
@@ -24,38 +30,10 @@ Flag glossary (each is independent and may co-occur):
 - MISSING_CONTRACT     project has no contract record
 - DUPLICATE_RECORD     multiple billing rows for the same Employee+Project
 
-Respond with valid JSON only. Do not wrap it in markdown.
+Respond with valid JSON only — no markdown, no preamble, no extra fields.
+Use exactly this two-field structure:
 
-Use this exact structure:
 {{
-  "schema_version": "1.0",
-  "record": {{
-    "employee_id": {employee_id},
-    "employee_name": "{employee_name}",
-    "project": "{project}"
-  }},
-  "status": "ERROR",
-  "flags": ["<flag codes from Discrepancy Flags>"],
-  "explanation": "<plain-English explanation of what went wrong>",
-  "corrective_action": "<specific recommended action for the billing team>",
-  "financial_deviation": {{
-    "expected_amount": {expected_amount},
-    "billed_amount": {billed_amount},
-    "difference": {difference},
-    "direction": "<overbilled | underbilled | no_amount_delta>",
-    "business_meaning": "<what this deviation represents for revenue, client trust, credits, leakage, or audit exposure>",
-    "capped_expected_amount": "<min(Hours_Worked, Max_Hours) * Contract_Rate — strict-cap interpretation>",
-    "over_cap_exposure": "<Billed_Amount minus capped_expected_amount; reflects the over-cap risk if the cap is enforced strictly>"
-  }},
-  "human_review": {{
-    "required": true,
-    "reviewer_role": "billing_supervisor",
-    "reason": "AI-generated remediation recommendations are advisory and must be approved before credits or invoice adjustments."
-  }},
-  "confidence": <float in [0, 1] expressing how confident you are that the flags accurately describe this row; 1.0 means certain>,
-  "risk_score": "<low | medium | high — supervisor triage signal. high = act immediately; medium = review this batch; low = audit only>",
-  "metadata": {{
-    "generation_mode": "{generation_mode}",
-    "source": "AIExplanationAgent"
-  }}
+  "explanation": "<one or two sentences in plain English describing what went wrong and why each flag applies>",
+  "corrective_action": "<one or two sentences with the specific action the billing team should take to resolve this>"
 }}

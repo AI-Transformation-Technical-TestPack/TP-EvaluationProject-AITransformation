@@ -12,9 +12,9 @@ class ReportAgent:
 
     name = "ReportAgent"
 
-    def __init__(self, output_dir: str = "output") -> None:
+    def __init__(self, output_dir: str = "data/output") -> None:
         self._output_dir = Path(output_dir)
-        self._output_dir.mkdir(exist_ok=True)
+        self._output_dir.mkdir(parents=True, exist_ok=True)
 
     def run(self, report_df: pd.DataFrame, verbose: bool = False) -> Path:
         output_path = self._output_dir / "validation_report.csv"
@@ -73,16 +73,60 @@ class ReportAgent:
             if verbose:
                 error_rows = df[df["Status"] == "ERROR"]
                 if not error_rows.empty:
-                    console.print("[bold white]── AI Explanations ──[/bold white]")
+                    console.print()
+                    console.print("[bold white]── Findings ──[/bold white]")
                     for _, row in error_rows.iterrows():
-                        console.print(f"\n[bold yellow]{row['Employee_Name']} (ID {row['Employee_ID']}):[/bold yellow]")
-                        console.print(row["AI_Explanation"] or "[dim]No explanation available.[/dim]")
+                        _print_finding(console, row)
 
             console.print()
-            console.print(f"[dim]Report saved to output/validation_report.csv[/dim]")
+            console.print("[dim]Full structured JSON contract for each ERROR row is in"
+                          " data/output/validation_report.csv → AI_Explanation column.[/dim]")
+            console.print("[dim]Per-agent audit trail: data/output/audit.log[/dim]")
 
         except ImportError:
             _print_plain(df, verbose)
+
+
+def _print_finding(console, row) -> None:
+    """Formatted, recruiter-readable per-error summary (no raw JSON)."""
+    import json as _json
+
+    risk_color = {"high": "red", "medium": "yellow", "low": "blue"}
+    diff = row["Difference"] if row["Difference"] is not None else 0.0
+
+    try:
+        payload = _json.loads(row["AI_Explanation"])
+    except (TypeError, ValueError, _json.JSONDecodeError):
+        payload = {}
+
+    risk = payload.get("risk_score", "—")
+    explanation = payload.get("explanation", "(no explanation)")
+    action = payload.get("corrective_action", "")
+    fin = payload.get("financial_deviation", {}) or {}
+    direction = fin.get("direction", "")
+    capped_exposure_raw = fin.get("over_cap_exposure")
+    try:
+        capped_exposure = float(capped_exposure_raw) if capped_exposure_raw is not None else None
+    except (TypeError, ValueError):
+        capped_exposure = None
+    mode = payload.get("metadata", {}).get("generation_mode", "?")
+
+    diff_str = f"+${diff:,.2f}" if diff > 0 else (f"-${abs(diff):,.2f}" if diff < 0 else "$0.00")
+
+    console.print()
+    console.print(
+        f"[bold red]✗ {row['Employee_Name']} (ID {int(row['Employee_ID'])})[/bold red] "
+        f"· risk: [bold {risk_color.get(risk, 'white')}]{risk}[/bold {risk_color.get(risk, 'white')}] "
+        f"· loose Δ: [bold]{diff_str}[/bold] {f'({direction})' if direction else ''}"
+    )
+    if capped_exposure is not None and abs(capped_exposure) > 0.01:
+        cap_str = f"+${capped_exposure:,.2f}" if capped_exposure > 0 else f"-${abs(capped_exposure):,.2f}"
+        console.print(f"    strict-cap exposure: [bold]{cap_str}[/bold]")
+    console.print(f"    flags: [yellow]{row['Flags']}[/yellow]")
+    console.print(f"    [white]what happened:[/white] {explanation}")
+    if action:
+        console.print(f"    [white]action:[/white] {action}")
+    console.print(f"    [dim]source: {mode}[/dim]")
 
 
 def _print_plain(df: pd.DataFrame, verbose: bool) -> None:
@@ -93,4 +137,4 @@ def _print_plain(df: pd.DataFrame, verbose: bool) -> None:
     for _, row in df.iterrows():
         flag_str = f" [{row['Flags']}]" if row["Flags"] else ""
         print(f"  {row['Status']:5s} | {row['Employee_Name']:8s} | Project {row['Project']}{flag_str}")
-    print("\nReport saved to output/validation_report.csv")
+    print("\nFull JSON contract per ERROR row: data/output/validation_report.csv → AI_Explanation column.")

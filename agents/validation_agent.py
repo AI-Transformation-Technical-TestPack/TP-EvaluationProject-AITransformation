@@ -43,7 +43,7 @@ class ValidationAgent:
         timesheet_df: pd.DataFrame,
         contracts_df: pd.DataFrame,
         billing_df: pd.DataFrame,
-        client: str = "teleperformance",
+        client: str = "client_a",
     ) -> pd.DataFrame:
         rules = self._load_rules(client)
         return self._validate(timesheet_df, contracts_df, billing_df, rules)

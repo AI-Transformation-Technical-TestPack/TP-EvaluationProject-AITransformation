@@ -14,10 +14,10 @@ load_dotenv()
 MENU = """
 ╔══════════════════════════════════════════════════════════╗
 ║         BILLING VALIDATION AGENT SYSTEM  v1.0           ║
-║                    TP Group — 2026                       ║
+║              Billing-validation prototype                ║
 ╠══════════════════════════════════════════════════════════╣
 ║                                                          ║
-║  [1]  Run validation  (default data, teleperformance)    ║
+║  [1]  Run validation  (default data, client_a)           ║
 ║  [2]  Run validation  (custom input file)                ║
 ║  [3]  Run validation  (no AI — deterministic mode)       ║
 ║  [4]  Run validation  (custom client rules)              ║
@@ -33,17 +33,17 @@ def run_interactive() -> None:
     choice = input("Select option: ").strip().upper()
 
     if choice == "1":
-        _run_pipeline("data/input/billing.csv", "teleperformance", use_ai=True, verbose=True)
+        _run_pipeline("data/input/billing.csv", "client_a", use_ai=True, verbose=True)
     elif choice == "2":
         path = input("Enter billing CSV path: ").strip()
-        _run_pipeline(path, "teleperformance", use_ai=True, verbose=True)
+        _run_pipeline(path, "client_a", use_ai=True, verbose=True)
     elif choice == "3":
-        _run_pipeline("data/input/billing.csv", "teleperformance", use_ai=False, verbose=True)
+        _run_pipeline("data/input/billing.csv", "client_a", use_ai=False, verbose=True)
     elif choice == "4":
-        client = input("Enter client name (e.g. teleperformance, client_b): ").strip()
+        client = input("Enter client name (e.g. client_a, client_b): ").strip()
         _run_pipeline("data/input/billing.csv", client, use_ai=True, verbose=True)
     elif choice == "5":
-        report = Path("output/validation_report.csv")
+        report = Path("data/output/validation_report.csv")
         if report.exists():
             print(report.read_text())
         else:
@@ -130,9 +130,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--client",
-        default="teleperformance",
+        default="client_a",
         metavar="NAME",
-        help="Client name to load rules from config/client_rules.json (default: teleperformance)",
+        help="Client name to load rules from config/client_rules.json (default: client_a)",
     )
     parser.add_argument(
         "--no-ai",

@@ -47,15 +47,51 @@ class AIExplanationAgent:
         self._openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
         self._openai_base_url = os.getenv("OPENAI_BASE_URL", "")
 
-    def run(self, report_df: pd.DataFrame, use_ai: bool = True) -> pd.DataFrame:
+    def run(
+        self,
+        report_df: pd.DataFrame,
+        use_ai: bool = True,
+        verbose: bool = False,
+    ) -> pd.DataFrame:
         df = report_df.copy()
-        for idx, row in df[df["Status"] == "ERROR"].iterrows():
+        error_rows = df[df["Status"] == "ERROR"]
+        for idx, row in error_rows.iterrows():
+            label = f"{row['Employee_Name']} (ID {int(row['Employee_ID'])})"
+            if verbose:
+                print(f"    · {label}: generating explanation…", end="", flush=True)
             if use_ai and self._has_configured_provider():
                 explanation = self._explain_with_provider(row)
             else:
                 explanation = self._explain_deterministic(row)
             df.at[idx, "AI_Explanation"] = explanation
+            if verbose:
+                try:
+                    mode = json.loads(explanation).get("metadata", {}).get("generation_mode", "?")
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    mode = "?"
+                friendly = {
+                    "anthropic": "explained by Anthropic Claude",
+                    "openai": "explained by OpenAI-compatible provider",
+                    "deterministic": "explained by the rule-based fallback",
+                }.get(mode, f"explained ({mode})")
+                print(f" {friendly}", flush=True)
         return df
+
+    def describe_provider(self, use_ai: bool) -> str:
+        """Plain-English description of the active provider for verbose logs."""
+        if not use_ai:
+            return "AI calls were disabled (--no-ai), so the deterministic rule-based explainer is being used instead"
+        if not self._has_configured_provider():
+            return (
+                f"No API key was found for provider '{self._provider}', so the deterministic "
+                "rule-based explainer is being used instead"
+            )
+        if self._provider == "anthropic":
+            return f"Calling Anthropic's Claude API (model: {self._anthropic_model})"
+        if self._provider == "openai":
+            base = self._openai_base_url or "https://api.openai.com/v1"
+            return f"Calling the OpenAI-compatible Chat Completions endpoint at {base} (model: {self._openai_model})"
+        return f"Using provider '{self._provider}'"
 
     def _has_configured_provider(self) -> bool:
         if self._provider == "anthropic":
@@ -93,6 +129,13 @@ class AIExplanationAgent:
             return self._to_json(explanation)
 
     def _explain_with_openai(self, row: pd.Series) -> str:
+        """Uses the Chat Completions endpoint for broad compatibility.
+
+        Most OpenAI-compatible providers (DeepSeek, Groq, Together, OpenRouter,
+        vLLM, etc.) implement /v1/chat/completions but not the newer
+        /v1/responses surface. Sticking to chat.completions keeps the explainer
+        portable.
+        """
         try:
             from openai import OpenAI
             client_kwargs = {"api_key": self._openai_api_key}
@@ -100,12 +143,12 @@ class AIExplanationAgent:
                 client_kwargs["base_url"] = self._openai_base_url
             client = OpenAI(**client_kwargs)
             prompt = self._build_prompt(row)
-            response = client.responses.create(
+            response = client.chat.completions.create(
                 model=self._openai_model,
-                input=prompt,
-                max_output_tokens=768,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=768,
             )
-            return self._finalize_provider_response(response.output_text, row)
+            return self._finalize_provider_response(response.choices[0].message.content, row)
         except Exception as exc:
             explanation = self._build_deterministic_contract(row)
             explanation["metadata"]["generation_mode"] = "deterministic_fallback_after_ai_error"
@@ -134,35 +177,41 @@ class AIExplanationAgent:
         return self._to_json(self._build_deterministic_contract(row))
 
     def _finalize_provider_response(self, raw_response: str, row: pd.Series) -> str:
+        """Take the AI's two-field prose response and merge it into the
+        deterministic contract. The LLM never produces numbers, flags, risk
+        scores, or any structural field — those are computed by
+        ``_build_deterministic_contract``. This guarantees type-safety of every
+        downstream consumer regardless of LLM behaviour.
+        """
         try:
-            payload = json.loads(raw_response)
-            self._validate_contract(payload)
-            payload["metadata"]["source"] = "AIExplanationAgent"
-            payload["metadata"].setdefault("generation_mode", self._provider)
-            return self._to_json(payload)
+            ai_explanation, ai_action = self._extract_ai_prose(raw_response)
+            contract = self._build_deterministic_contract(row)
+            contract["explanation"] = ai_explanation
+            contract["corrective_action"] = ai_action
+            contract["metadata"]["generation_mode"] = self._provider
+            contract["metadata"]["source"] = "AIExplanationAgent"
+            return self._to_json(contract)
         except (TypeError, json.JSONDecodeError, ValueError) as exc:
             explanation = self._build_deterministic_contract(row)
             explanation["metadata"]["generation_mode"] = "deterministic_fallback_after_ai_contract_error"
             explanation["metadata"]["ai_error"] = str(exc)
             return self._to_json(explanation)
 
-    def _validate_contract(self, payload: dict) -> None:
+    @staticmethod
+    def _extract_ai_prose(raw_response: str) -> tuple[str, str]:
+        """Parse a two-field AI response. Returns (explanation, corrective_action)."""
+        if not isinstance(raw_response, str) or not raw_response.strip():
+            raise ValueError("AI provider response was empty.")
+        payload = json.loads(raw_response)
         if not isinstance(payload, dict):
             raise ValueError("AI provider response must be a JSON object.")
-
-        missing = sorted(REQUIRED_CONTRACT_FIELDS - payload.keys())
-        if missing:
-            raise ValueError(f"AI provider response is missing required fields: {missing}")
-
-        if not isinstance(payload["metadata"], dict):
-            raise ValueError("AI provider response metadata must be a JSON object.")
-
-        confidence = payload.get("confidence")
-        if not isinstance(confidence, (int, float)) or not 0.0 <= float(confidence) <= 1.0:
-            raise ValueError("AI provider response confidence must be a number in [0, 1].")
-
-        if payload.get("risk_score") not in VALID_RISK_SCORES:
-            raise ValueError(f"AI provider response risk_score must be one of {sorted(VALID_RISK_SCORES)}.")
+        explanation = payload.get("explanation", "")
+        action = payload.get("corrective_action", "")
+        if not isinstance(explanation, str) or not explanation.strip():
+            raise ValueError("AI response missing or empty 'explanation' field.")
+        if not isinstance(action, str) or not action.strip():
+            raise ValueError("AI response missing or empty 'corrective_action' field.")
+        return explanation.strip(), action.strip()
 
     def _build_deterministic_contract(self, row: pd.Series) -> dict:
         flags = [f.strip() for f in row["Flags"].split(",") if f.strip()]
